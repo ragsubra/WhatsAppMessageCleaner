@@ -1,0 +1,57 @@
+package com.example.wacleaner
+
+import android.content.Context
+import org.json.JSONArray
+import org.json.JSONObject
+
+class RuleStore(context: Context) {
+    private val prefs = context.getSharedPreferences("wa_cleaner", Context.MODE_PRIVATE)
+
+    fun loadRules(): MutableList<CleanerRule> {
+        val raw = prefs.getString("rules", "[]") ?: "[]"
+        val array = JSONArray(raw)
+        return MutableList(array.length()) { i ->
+            val o = array.getJSONObject(i)
+            val users = o.getJSONArray("users")
+            CleanerRule(
+                id = o.getLong("id"),
+                groupName = o.getString("group"),
+                userNames = List(users.length()) { users.getString(it) },
+                enabled = o.optBoolean("enabled", true)
+            )
+        }
+    }
+
+    fun saveRules(rules: List<CleanerRule>) {
+        val array = JSONArray()
+        rules.forEach { r ->
+            array.put(JSONObject().apply {
+                put("id", r.id)
+                put("group", r.groupName)
+                put("users", JSONArray(r.userNames))
+                put("enabled", r.enabled)
+            })
+        }
+        prefs.edit().putString("rules", array.toString()).apply()
+    }
+
+    fun arm(ruleId: Long, deleteMode: Boolean) {
+        prefs.edit()
+            .putLong("armed_rule_id", ruleId)
+            .putBoolean("armed", true)
+            .putBoolean("delete_mode", deleteMode)
+            .putLong("armed_at", System.currentTimeMillis())
+            .apply()
+    }
+
+    fun disarm() = prefs.edit().putBoolean("armed", false).apply()
+    fun isArmed(): Boolean = prefs.getBoolean("armed", false)
+    fun deleteMode(): Boolean = prefs.getBoolean("delete_mode", false)
+    fun armedRule(): CleanerRule? {
+        val id = prefs.getLong("armed_rule_id", -1)
+        return loadRules().firstOrNull { it.id == id && it.enabled }
+    }
+
+    fun setStatus(status: String) = prefs.edit().putString("status", status).apply()
+    fun status(): String = prefs.getString("status", "idle") ?: "idle"
+}

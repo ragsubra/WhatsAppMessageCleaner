@@ -1,0 +1,8 @@
+package com.example.wacleaner
+
+data class CleanerRule(
+    val id: Long = System.currentTimeMillis(),
+    val groupName: String,
+    val userNames: List<String>,
+    val enabled: Boolean = true
+)
